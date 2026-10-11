@@ -1,0 +1,51 @@
+# Workflow PUENTE (temporal): descarga las plantillas canvas públicas de Drive
+# y las commitea al repo. Se dispara solo al pushear este archivo o canvas-trigger.txt.
+name: import-canvas
+
+on:
+  push:
+    paths:
+      - ".github/workflows/import-canvas.yml"
+      - "canvas-trigger.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: arena/de58fa27-sputz-api
+          fetch-depth: 1
+
+      - name: Descargar plantillas desde Drive
+        run: |
+          set -e
+          mkdir -p server/assets/canvas
+          curl -fsSL -o server/assets/canvas/welcome.png   "https://lh3.googleusercontent.com/d/1QCjERmK3nO_uA2NU6pNU98KZEwcGTeU2"
+          curl -fsSL -o server/assets/canvas/despedida.png "https://lh3.googleusercontent.com/d/1XKJ2qz684l7apu3IM-YhrpORL7YvSdhe"
+          curl -fsSL -o server/assets/canvas/ship.png      "https://lh3.googleusercontent.com/d/1DIrWQp3br9sNC_Xl97vgOGrzO1wR7-QX"
+          curl -fsSL -o server/assets/canvas/gay.png       "https://lh3.googleusercontent.com/d/1fhnQYONE0z6PeNePjDE6w8kQZrlNqQ_e"
+          curl -fsSL -o server/assets/canvas/levelup.png   "https://lh3.googleusercontent.com/d/1GaA-fyITEm1Vk4J0n44VCH3N5h4xN0Yk"
+          curl -fsSL -o server/assets/canvas/levelupv2.png "https://lh3.googleusercontent.com/d/1qkrOCpHkQrcVxOhXfdQVh506Kh5asmbm"
+          ls -la server/assets/canvas
+          for f in server/assets/canvas/*.png; do
+            size=$(stat -c%s "$f")
+            if [ "$size" -lt 10000 ]; then echo "::error::Archivo demasiado pequeño: $f"; exit 1; fi
+            head -c 8 "$f" | od -An -tx1 | grep -q "89 50 4e 47" || { echo "::error::No es PNG: $f"; exit 1; }
+          done
+
+      - name: Commit y push de vuelta
+        run: |
+          git config user.name "siputzx-bot"
+          git config user.email "siputzx-bot@users.noreply.github.com"
+          git add server/assets/canvas
+          if git diff --cached --quiet; then
+            echo "Sin cambios que commitear"
+          else
+            git commit -m "Importa plantillas canvas desde Drive (vía Actions)"
+            git push origin HEAD:arena/de58fa27-sputz-api
+          fi
