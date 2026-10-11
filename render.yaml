@@ -17,26 +17,26 @@ services:
   - type: web
     name: siputzx-api
     runtime: node
-    nodeVersion: 20
-    plan: starter
+    nodeVersion: "20"
+    plan: free # sin costo; cámbialo a 0.5c-512mb o superior para evitar el reposo
     region: oregon # cámbiala por la más cercana a tus usuarios (p. ej. frankfurt)
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/meta/status
-    autoDeploy: true
+    autoDeployTrigger: commit # despliega en cada push a la rama del blueprint
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: "20"
       # Nombre público de la API (cámbialo para renombrar toda la web)
       - key: API_NAME
         value: SiputZX API
       # Límites de uso y subida (ajusta a tu gusto)
       - key: RATE_LIMIT_MAX
-        value: 120
+        value: "120"
       - key: RATE_LIMIT_WINDOW_MS
-        value: 60000
+        value: "60000"
       - key: MAX_UPLOAD_MB
-        value: 25
+        value: "25"
       # ── Claves opcionales: descomenta y completa las que vayas a usar ──
       # - key: OPENAI_API_KEY
       #   sync: false
@@ -74,24 +74,24 @@ services:
 #   - type: web
 #     name: siputzx-api
 #     runtime: node
-#     nodeVersion: 20
-#     plan: starter
+#     nodeVersion: "20"
+#     plan: free
 #     buildCommand: npm ci --include=dev && npm run build -w server
 #     startCommand: npm run start -w server
 #     healthCheckPath: /api/meta/status
 #     envVars:
 #       - key: NODE_VERSION
-#         value: 20
+#         value: "20"
 #   - type: web
 #     name: siputzx-web
 #     runtime: node
-#     nodeVersion: 20
-#     plan: starter
+#     nodeVersion: "20"
+#     plan: free
 #     buildCommand: npm ci --include=dev && npm run build -w web
 #     startCommand: npx -y serve -l $PORT web/dist -s
 #     envVars:
 #       - key: NODE_VERSION
-#         value: 20
+#         value: "20"
 #       - key: VITE_API_BASE
 #         value: https://siputzx-api.onrender.com  # URL pública del backend
 # ─────────────────────────────────────────────────────────────────────────────
