@@ -7,7 +7,10 @@ import { badRequest } from "../lib/errors";
 try {
   for (const f of [
     { path: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", family: "Sans" },
-    { path: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", family: "Sans" }
+    { path: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", family: "Sans" },
+    { path: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", family: "SansBold" },
+    { path: "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", family: "Serif" },
+    { path: "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", family: "SerifBold" }
   ]) {
     try {
       GlobalFonts.registerFromPath(f.path, f.family);
@@ -419,4 +422,145 @@ export function seededPercent(seed: string | number): number {
 export function assertColor(value: string, field: string): string {
   if (!/^#?[0-9a-fA-F]{6}$/.test(value)) throw badRequest(`El parámetro «${field}» debe ser un color hexadecimal, p. ej. #22c55e`);
   return value.startsWith("#") ? value : `#${value}`;
+}
+
+// ─────────────────── Composición sobre plantillas propias ───────────────────
+// Las plantillas (server/assets/canvas) son el lienzo; encima se dibujan los
+// datos dinámicos en las zonas definidas en canvasLayout.ts. Si una plantilla
+// no existe, estas funciones devuelven null y el handler usa el diseño generado.
+
+import { getTemplate } from "./canvasTemplates";
+import { LAYOUTS, type TemplateLayout, type TextSpot } from "./canvasLayout";
+
+function serifText(ctx: SKRSContext2D, text: string, spot: TextSpot, W: number, H: number): void {
+  if (!text) return;
+  let content = spot.caps ? text.toUpperCase() : text;
+  let size = Math.round(spot.size * H);
+  const family = spot.bold ? "SerifBold" : "Serif";
+  ctx.font = `${size}px ${family}, serif`;
+  if (spot.maxW) {
+    const max = spot.maxW * W;
+    while (size > 12 && ctx.measureText(content).width > max) {
+      size -= 2;
+      ctx.font = `${size}px ${family}, serif`;
+    }
+  }
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = spot.color ?? "#f5f5f6";
+  if (spot.glow) {
+    ctx.shadowColor = "rgba(0,0,0,0.9)";
+    ctx.shadowBlur = spot.glow;
+  } else {
+    ctx.shadowColor = "rgba(0,0,0,0.65)";
+    ctx.shadowBlur = 4;
+  }
+  const x = spot.x * W;
+  const y = spot.y * H;
+  if (spot.italic) {
+    ctx.translate(x, y);
+    ctx.transform(1, 0, -0.22, 1, 0, 0);
+    ctx.fillText(content, 0, 0);
+  } else {
+    ctx.fillText(content, x, y);
+  }
+  ctx.restore();
+}
+
+function drawZones(ctx: SKRSContext2D, W: number, H: number, layout: TemplateLayout, avatars: Canvas[], texts: string[]): void {
+  // Placas sólidas para sobrescribir texto impreso de la plantilla
+  for (const p of layout.plates ?? []) {
+    ctx.fillStyle = "#0b0b0e";
+    ctx.fillRect(p.x * W, p.y * H, p.w * W, p.h * H);
+  }
+  // Placas suaves (degradado en dos pasadas) para texto sobre el arte
+  for (const p of layout.softPlates ?? []) {
+    const cx = (p.x + p.w / 2) * W;
+    const cy = (p.y + p.h / 2) * H;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(p.w * W, p.h * H) * 0.72);
+    grad.addColorStop(0, "rgba(6,6,9,0.96)");
+    grad.addColorStop(0.72, "rgba(6,6,9,0.82)");
+    grad.addColorStop(1, "rgba(6,6,9,0)");
+    ctx.fillStyle = grad;
+    const rx = p.x * W - p.w * W * 0.2;
+    const ry = p.y * H - p.h * H * 0.2;
+    const rw = p.w * W * 1.4;
+    const rh = p.h * H * 1.4;
+    ctx.fillRect(rx, ry, rw, rh);
+    ctx.fillRect(rx, ry, rw, rh); // segunda pasada: opacidad compuesta
+  }
+  // Avatares recortados en círculo
+  (layout.avatars ?? []).forEach((zone, i) => {
+    const avatar = avatars[i];
+    if (!avatar) return;
+    const cx = zone.cx * W;
+    const cy = zone.cy * H;
+    const r = zone.r * W;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatar, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+  });
+  // Barra de progreso
+  if (layout.bar) {
+    const pctText = texts[0];
+    const pct = Math.max(0, Math.min(100, Number.parseInt(pctText, 10) || 0));
+    const z = layout.bar.zone;
+    ctx.fillStyle = layout.bar.empty;
+    ctx.fillRect(z.x * W, z.y * H, z.w * W, z.h * H);
+    ctx.fillStyle = layout.bar.fill;
+    ctx.fillRect(z.x * W, z.y * H, (z.w * W * pct) / 100, z.h * H);
+  }
+  // Textos dinámicos
+  (layout.texts ?? []).forEach((spot, i) => serifText(ctx, texts[i] ?? "", spot, W, H));
+}
+
+async function compose(templateName: string, avatars: Canvas[], texts: string[]): Promise<Buffer | null> {
+  const img = await getTemplate(templateName);
+  if (!img) return null;
+  const layout = LAYOUTS[templateName];
+  if (!layout) return null;
+  const canvas = createCanvas(img.width, img.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  drawZones(ctx, img.width, img.height, layout, avatars, texts);
+  return canvas.toBuffer("image/png");
+}
+
+export async function templateWelcome(opts: {
+  username: string; group: string; members: number; avatar: Canvas; kind: "welcome" | "goodbye";
+}): Promise<Buffer | null> {
+  const texts =
+    opts.kind === "welcome"
+      ? [`Miembro # ${opts.members}`, opts.username, opts.group]
+      : [opts.username, opts.group];
+  return compose(opts.kind === "welcome" ? "welcome" : "despedida", [opts.avatar], texts);
+}
+
+export async function templateShip(opts: {
+  name1: string; name2: string; percent: number; avatar1: Canvas; avatar2: Canvas;
+}): Promise<Buffer | null> {
+  return compose("ship", [opts.avatar1, opts.avatar2], [
+    `${opts.percent}%`,
+    opts.name1,
+    opts.name2
+  ]);
+}
+
+export async function templateGay(opts: { name: string; percent: number; avatar: Canvas }): Promise<Buffer | null> {
+  return compose("gay", [opts.avatar], [`${opts.percent}%`, opts.name]);
+}
+
+export async function templateIqc(opts: { name: string; bio?: string; percent: number; avatar: Canvas }): Promise<Buffer | null> {
+  return compose("levelup", [opts.avatar], [
+    "IQ",
+    `${opts.percent}`,
+    "Perfil",
+    opts.name,
+    opts.bio ?? ""
+  ]);
 }
