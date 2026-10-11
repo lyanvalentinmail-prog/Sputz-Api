@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Tokens de diseño (tema claro por defecto) ─── */
+:root {
+  --bg: #ffffff;
+  --bg-alt: #fafafa;
+  --border: #e4e4e7;
+  --text: #111113;
+  --muted: #6f7280;
+  --accent: #16a34a;
+  --accent-soft: #f0fdf4;
+  --code-bg: #f6f7f8;
+}
+
+.dark {
+  --bg: #0e0f11;
+  --bg-alt: #141518;
+  --border: #26272c;
+  --text: #f2f3f5;
+  --muted: #9ca0ab;
+  --accent: #22c55e;
+  --accent-soft: #11241a;
+  --code-bg: #17181c;
+}
+
+/* Esquinas rectas en todos los elementos, sin excepción */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Desplazamiento horizontal solo dentro de bloques de código */
+pre,
+.code-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Barras de desplazamiento finas y discretas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Inputs con aspecto consistente entre navegadores */
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
