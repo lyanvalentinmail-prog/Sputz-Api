@@ -37,13 +37,27 @@ export const config = {
     SOUNDCLOUD_CLIENT_ID: process.env.SOUNDCLOUD_CLIENT_ID || "",
     TINYURL_API_KEY: process.env.TINYURL_API_KEY || ""
   },
-  webDist: path.resolve(__dirname, "../../web/dist")
 };
 
 export function envMissing(names: string[]): string[] {
   return names.filter((n) => !(config.env as Record<string, string>)[n]);
 }
 
+export function webDistPath(): string {
+  // El código compilado vive en server/dist/server/src y el de desarrollo en
+  // server/src; se prueban ambas ubicaciones relativas y la basada en cwd.
+  const candidates = [
+    path.resolve(__dirname, "../../../web/dist"), // compilado: server/dist/server/src
+    path.resolve(__dirname, "../../web/dist"), // desarrollo: server/src
+    path.resolve(process.cwd(), "../web/dist"), // cwd = server/
+    path.resolve(process.cwd(), "web/dist") // cwd = raíz del repo
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, "index.html"))) return c;
+  }
+  return candidates[0];
+}
+
 export function webDistExists(): boolean {
-  return fs.existsSync(path.join(config.webDist, "index.html"));
+  return fs.existsSync(path.join(webDistPath(), "index.html"));
 }

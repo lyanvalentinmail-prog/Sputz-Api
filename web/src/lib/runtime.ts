@@ -1,4 +1,5 @@
 import type { EndpointStatus, RuntimeEndpointInfo } from "@shared/types";
+import { API_BASE } from "./apiBase";
 
 export interface ApiStatus {
   name: string;
@@ -15,7 +16,7 @@ export interface RuntimeMap {
 /** Estado del servicio (barra superior). Devuelve null si el backend no responde. */
 export async function fetchApiStatus(): Promise<ApiStatus | null> {
   try {
-    const res = await fetch("/api/meta/status");
+    const res = await fetch(`${API_BASE}/api/meta/status`);
     if (!res.ok) return null;
     const json = (await res.json()) as { data?: ApiStatus };
     return json.data ?? null;
@@ -27,7 +28,7 @@ export async function fetchApiStatus(): Promise<ApiStatus | null> {
 /** Disponibilidad real calculada por el servidor (credenciales y servicios). */
 export async function fetchRuntimeInfo(): Promise<RuntimeMap> {
   try {
-    const res = await fetch("/api/meta/endpoints");
+    const res = await fetch(`${API_BASE}/api/meta/endpoints`);
     if (!res.ok) return {};
     const json = (await res.json()) as { data?: { endpoints?: Array<{ id: string; runtime?: RuntimeEndpointInfo }> } };
     const map: RuntimeMap = {};

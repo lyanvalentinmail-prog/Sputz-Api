@@ -1,4 +1,5 @@
 import type { Endpoint, Param } from "@shared/types";
+import { API_BASE } from "./apiBase";
 
 export type FormValue = string | boolean | number | undefined;
 export type FormValues = Record<string, FormValue>;
@@ -81,7 +82,7 @@ export async function tryEndpoint(ep: Endpoint, values: FormValues, files: FormF
   }
 
   try {
-    const res = await fetch(url, init);
+    const res = await fetch(`${API_BASE}${url}`, init);
     const timeMs = Math.round(performance.now() - started);
     const contentType = res.headers.get("content-type") || "application/octet-stream";
     if (contentType.includes("application/json")) {

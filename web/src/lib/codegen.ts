@@ -1,5 +1,12 @@
 import type { Endpoint } from "@shared/types";
 import { buildJsonBody, buildRequestUrl, fileParams, valueParams, type FormFiles, type FormValues } from "./tryRequest";
+import { API_BASE } from "./apiBase";
+
+/** Origen que aparece en los ejemplos generados (backend separado o mismo origen). */
+function origin(): string {
+  if (API_BASE) return API_BASE;
+  return typeof location !== "undefined" ? location.origin : "";
+}
 
 function placeholder(ep: Endpoint, name: string): string {
   const param = ep.params.find((p) => p.name === name);
@@ -23,10 +30,11 @@ function sampleValues(ep: Endpoint, values: FormValues): FormValues {
 /** Ejemplo en JavaScript (fetch) con los valores actuales del formulario. */
 export function buildJsExample(ep: Endpoint, values: FormValues, files: FormFiles): string {
   const vals = sampleValues(ep, values);
+  const base = origin();
   const hasFiles = fileParams(ep).length > 0;
   if (ep.method === "GET") {
     const url = buildRequestUrl(ep, vals);
-    return `const res = await fetch("${url}");\nconst data = await res.json();\nconsole.log(data);`;
+    return `const res = await fetch("${base}${url}");\nconst data = await res.json();\nconsole.log(data);`;
   }
   if (hasFiles) {
     const lines = ["const form = new FormData();"];
@@ -39,7 +47,7 @@ export function buildJsExample(ep: Endpoint, values: FormValues, files: FormFile
       if (v !== undefined && v !== "") lines.push(`form.append("${param.name}", ${JSON.stringify(String(v))});`);
     }
     lines.push(
-      `const res = await fetch("${ep.path}", { method: "POST", body: form });`,
+      `const res = await fetch("${base}${ep.path}", { method: "POST", body: form });`,
       `const data = await res.json();`,
       `console.log(data);`
     );
@@ -50,18 +58,19 @@ export function buildJsExample(ep: Endpoint, values: FormValues, files: FormFile
   const init = body
     ? `, {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify(${JSON.stringify(body, null, 2).split("\n").join("\n  ")})\n}`
     : `, { method: "POST" }`;
-  return `const res = await fetch("${url}"${init});\nconst data = await res.json();\nconsole.log(data);`;
+  return `const res = await fetch("${base}${url}"${init});\nconst data = await res.json();\nconsole.log(data);`;
 }
 
 /** Ejemplo en cURL con los valores actuales del formulario. */
 export function buildCurlExample(ep: Endpoint, values: FormValues, files: FormFiles): string {
   const vals = sampleValues(ep, values);
+  const base = origin();
   if (ep.method === "GET") {
-    return `curl "${location.origin}${buildRequestUrl(ep, vals)}"`;
+    return `curl "${base}${buildRequestUrl(ep, vals)}"`;
   }
-  const hasFiles = fileParams(ep).length > 0 && Object.values(files).some((l) => l.length);
-  if (hasFiles || fileParams(ep).length > 0) {
-    const parts = [`curl -X POST "${location.origin}${ep.path}"`];
+  const hasFiles = fileParams(ep).length > 0;
+  if (hasFiles) {
+    const parts = [`curl -X POST "${base}${ep.path}"`];
     for (const fp of fileParams(ep)) {
       const file = files[fp.name]?.[0];
       parts.push(`  -F "${fp.name}=@${file ? file.name : "archivo.png"}"`);
@@ -75,7 +84,7 @@ export function buildCurlExample(ep: Endpoint, values: FormValues, files: FormFi
   const body = buildJsonBody(ep, vals);
   const url = buildRequestUrl(ep, vals);
   if (body) {
-    return `curl -X POST "${location.origin}${url}" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body)}'`;
+    return `curl -X POST "${base}${url}" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body)}'`;
   }
-  return `curl -X POST "${location.origin}${url}"`;
+  return `curl -X POST "${base}${url}"`;
 }

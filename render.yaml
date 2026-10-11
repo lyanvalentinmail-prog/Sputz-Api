@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Blueprint de Render para SiputZX API
+#
+# Cómo usarlo:
+#   1. Sube este repositorio a GitHub.
+#   2. En Render: New → Blueprint → selecciona el repositorio.
+#   3. Render leerá este archivo y creará el servicio automáticamente.
+#   4. (Opcional) Añade después las claves de proveedores externos en la
+#      pestaña "Environment" del servicio (OPENAI_API_KEY, SPOTIFY_CLIENT_ID…).
+#      Sin claves, la API funciona igual y marca esos endpoints como
+#      "Falta credencial".
+#
+# Este blueprint despliega UN único servicio web que sirve la API y el
+# frontend compilado en el mismo origen (sin CORS ni proxies adicionales).
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+  - type: web
+    name: siputzx-api
+    runtime: node
+    nodeVersion: 20
+    plan: starter
+    region: oregon # cámbiala por la más cercana a tus usuarios (p. ej. frankfurt)
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/meta/status
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # Nombre público de la API (cámbialo para renombrar toda la web)
+      - key: API_NAME
+        value: SiputZX API
+      # Límites de uso y subida (ajusta a tu gusto)
+      - key: RATE_LIMIT_MAX
+        value: 120
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: MAX_UPLOAD_MB
+        value: 25
+      # ── Claves opcionales: descomenta y completa las que vayas a usar ──
+      # - key: OPENAI_API_KEY
+      #   sync: false
+      # - key: BLACKBOX_API_KEY
+      #   sync: false
+      # - key: BLACKBOX_BASE_URL
+      #   sync: false
+      # - key: REMOVEBG_API_KEY
+      #   sync: false
+      # - key: GOOGLE_API_KEY
+      #   sync: false
+      # - key: GOOGLE_CSE_ID
+      #   sync: false
+      # - key: GOOGLE_VISION_API_KEY
+      #   sync: false
+      # - key: SPOTIFY_CLIENT_ID
+      #   sync: false
+      # - key: SPOTIFY_CLIENT_SECRET
+      #   sync: false
+      # - key: SOUNDCLOUD_CLIENT_ID
+      #   sync: false
+      # - key: TINYURL_API_KEY
+      #   sync: false
+      # - key: YTDLP_PATH
+      #   sync: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ALTERNATIVA: frontend estático + backend separados.
+# Si prefieres el frontend como sitio estático de Render (o Vercel/Netlify),
+# comenta el servicio único de arriba y descomenta este bloque. Luego define
+# VITE_API_BASE en el entorno del sitio estático con la URL pública del
+# servicio "siputzx-api" (p. ej. https://siputzx-api.onrender.com).
+#
+# services:
+#   - type: web
+#     name: siputzx-api
+#     runtime: node
+#     nodeVersion: 20
+#     plan: starter
+#     buildCommand: npm ci --include=dev && npm run build -w server
+#     startCommand: npm run start -w server
+#     healthCheckPath: /api/meta/status
+#     envVars:
+#       - key: NODE_VERSION
+#         value: 20
+#   - type: web
+#     name: siputzx-web
+#     runtime: node
+#     nodeVersion: 20
+#     plan: starter
+#     buildCommand: npm ci --include=dev && npm run build -w web
+#     startCommand: npx -y serve -l $PORT web/dist -s
+#     envVars:
+#       - key: NODE_VERSION
+#         value: 20
+#       - key: VITE_API_BASE
+#         value: https://siputzx-api.onrender.com  # URL pública del backend
+# ─────────────────────────────────────────────────────────────────────────────

@@ -117,11 +117,24 @@ Servicios gratuitos que funcionan sin clave: Jikan (anime/manga/frases), waifu.p
 
 ## Despliegue
 
-**Opción A — un solo servicio (recomendada):** compila con `npm run build` y ejecuta `npm start` en cualquier VPS/contenedor con Node ≥ 18 (Railway, Render, Fly.io…). Expón el puerto `PORT`.
+### Render (Blueprint)
+
+El repositorio incluye `render.yaml`, así que puedes desplegar con un clic:
+
+1. Sube el repositorio a GitHub (ya está en esta rama).
+2. En Render: **New → Blueprint** y selecciona el repositorio.
+3. Render crea el servicio `siputzx-api` (Node 20): compila backend + frontend y sirve todo en un mismo origen; el health check usa `/api/meta/status`.
+4. Si quieres habilitar proveedores externos, añade sus claves en la pestaña **Environment** del servicio (o descomenta las claves en `render.yaml`). Sin claves, la API sigue funcionando y marca esos endpoints como «Falta credencial».
+
+En `render.yaml` hay también un bloque comentado con la alternativa de **frontend estático + backend separados**: el frontend acepta la variable de build `VITE_API_BASE` con la URL pública del backend (por defecto usa rutas relativas `/api/...`, así que no hace falta si comparten origen). Cambia `region` y `plan` a tu gusto.
+
+### Otras plataformas
+
+**Opción A — un solo servicio (recomendada):** compila con `npm run build` y ejecuta `npm start` en cualquier VPS/contenedor con Node ≥ 18 (Railway, Fly.io…). Expón el puerto `PORT`.
 
 **Opción B — separados:**
-- Backend: desplega la carpeta `server` (comando de build `npm run build -w server`, arranque `npm start -w server`). Añade las variables de entorno que uses.
-- Frontend: Vercel/Netlify con root en `web`; añade un rewrite de `/api/*` hacia la URL del backend (el frontend solo usa rutas relativas, así que no hay CORS ni claves expuestas).
+- Backend: desplega la carpeta `server` (comando de build `npm run build -w server`, arranque `npm run start -w server`). Añade las variables de entorno que uses.
+- Frontend: Vercel/Netlify con root en `web`; define `VITE_API_BASE` con la URL pública del backend, o añade un rewrite de `/api/*` hacia él (el frontend solo usa rutas relativas cuando no se define esa variable, así que no hay CORS ni claves expuestas).
 
 ## Licencia y uso
 

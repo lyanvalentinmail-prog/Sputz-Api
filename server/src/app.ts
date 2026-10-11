@@ -1,10 +1,9 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import fs from "node:fs";
 import path from "node:path";
 import multer from "multer";
-import { config, webDistExists } from "./config";
+import { config, webDistExists, webDistPath } from "./config";
 import { buildRouter } from "./router";
 import { fail, toApiError } from "./lib/respond";
 import { ENDPOINTS } from "../../shared/catalog";
@@ -38,10 +37,11 @@ export function createApp(): express.Express {
 
   // Frontend compilado (despliegue conjunto)
   if (webDistExists()) {
-    app.use(express.static(config.webDist));
+    const webDist = webDistPath();
+    app.use(express.static(webDist));
     app.get("*", (req, res, next) => {
       if (req.path.startsWith("/api")) return next();
-      res.sendFile(path.join(config.webDist, "index.html"));
+      res.sendFile(path.join(webDist, "index.html"));
     });
   } else {
     app.get("/", (_req, res) => {
@@ -49,7 +49,7 @@ export function createApp(): express.Express {
         `<html lang="es"><body style="font-family:sans-serif;padding:40px"><h1>${config.apiName}</h1>` +
         `<p>El backend está activo con ${ENDPOINTS.length} endpoints. Arranca el frontend con <code>npm run dev -w web</code> o compílalo con <code>npm run build</code>.</p>` +
         `<p>Estado: <a href="/api/meta/status">/api/meta/status</a> · Catálogo: <a href="/api/meta/endpoints">/api/meta/endpoints</a></p>` +
-        `<p>El frontend no está compilado en esta instancia (falta ${fs.realpathSync(config.webDist)}/index.html).</p></body></html>`
+        `<p>El frontend no está compilado en esta instancia (falta ${webDistPath()}/index.html). Ejecuta <code>npm run build</code>.</p></body></html>`
       );
     });
   }
